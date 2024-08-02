@@ -21,9 +21,11 @@ cargo build --release
 
 ## TODO
 
-* Tab completion
-* GUI
+* (bug) CTRL-C should cancel the current operation and not terminate the shell
+* (ft.) Tab completion
+* (ft.) PS1 configuration possibility
+* (ft.) GUI
 
 ## LICENSE
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
