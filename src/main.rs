@@ -1,5 +1,8 @@
+use signal_hook::{consts::SIGINT, iterator::Signals};
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 #[derive(PartialEq)]
 enum ShellState {
@@ -81,8 +84,11 @@ fn read_and_parse_input(user_input: &mut String) -> (Option<Vec<&str>>, InputSta
     (Some(parsed_input), input_state)
 }
 
-fn handle_parsed_input(parsed_input: Vec<&str>) -> ShellState {
-    /* Handle specific and generic implementations of commands
+fn handle_parsed_input(
+    parsed_input: Vec<&str>,
+    active_child_process: &Arc<Mutex<Option<std::process::Child>>>,
+) -> ShellState {
+    /* Handle specific and generic implementations of commands and signals
      * Return the ShellState for state machine
      */
 
@@ -93,22 +99,62 @@ fn handle_parsed_input(parsed_input: Vec<&str>) -> ShellState {
         }
         "exit" => ShellState::Exiting,
         _ => {
-            // Execute a new command with args, using parent stds
-            match Command::new(parsed_input[0])
+            let child_proc = match Command::new(parsed_input[0])
                 .args(&parsed_input[1..])
                 .stdin(Stdio::inherit())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
-                .status()
+                .spawn() // returns handler
             {
-                Ok(_) => {}
+                Ok(child_proc) => child_proc,
                 Err(e) => {
                     print_and_flush(("Failed to execute command", e.to_string().as_str())).unwrap();
+                    return ShellState::Running;
                 }
+            };
+
+            {
+                // Update active_child_process with current process handle
+                let mut handle_child_proc = active_child_process.lock().unwrap();
+                *handle_child_proc = Some(child_proc);
             }
+
+            {
+                // Wait for child and reset
+                let mut handle_child_proc = active_child_process.lock().unwrap();
+                if let Some(ref mut child_proc) = *handle_child_proc {
+                    child_proc.wait().unwrap();
+                }
+                *handle_child_proc = None;
+            }
+
             ShellState::Running
         }
     }
+}
+
+fn setup_signal_handler(active_child_process: Arc<Mutex<Option<std::process::Child>>>) {
+    /*
+     * Setup a signal handler for SIGINT (CTRL-C).
+     * Spawn a new thread to listen for SIGINT signals.
+     * Upon detection, safely kill the child process.
+     */
+
+    let mut signals = Signals::new(&[SIGINT]).unwrap();
+
+    let child_clone = Arc::clone(&active_child_process);
+
+    thread::spawn(move || {
+        for _ in signals.forever() {
+            let mut handle_child_proc = child_clone.lock().unwrap();
+            if let Some(ref mut child) = *handle_child_proc {
+                print_and_flush("CTRL-C detected. Terminating active task.\n").unwrap();
+                child.kill().unwrap();
+            } else {
+                print_and_flush("\n-> ").unwrap();
+            }
+        }
+    });
 }
 
 fn show_help() {
@@ -126,6 +172,9 @@ fn show_help() {
 }
 
 fn main() {
+    let active_child_process = Arc::new(Mutex::new(None));
+    setup_signal_handler(Arc::clone(&active_child_process));
+
     loop {
         print_and_flush("-> ").unwrap();
 
@@ -143,7 +192,7 @@ fn main() {
         }
 
         if let Some(parsed_input) = parsed_input {
-            if handle_parsed_input(parsed_input) == ShellState::Exiting {
+            if handle_parsed_input(parsed_input, &active_child_process) == ShellState::Exiting {
                 break;
             }
         }
