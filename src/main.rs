@@ -103,78 +103,96 @@ impl UserInput {
     }
 }
 
-fn handle_parsed_input(
-    parsed_input: Vec<&str>,
-    active_child_process: &Arc<Mutex<Option<std::process::Child>>>,
-) -> ShellState {
-    /*
-     * Handle specific and generic implementations of commands and signals
-     * Return the ShellState for state machine
-     */
-
-    match parsed_input[0] {
-        "help" => {
-            show_help();
-            ShellState::Running
-        }
-        "exit" => ShellState::Exiting,
-        _ => {
-            let child_proc = match Command::new(parsed_input[0])
-                .args(&parsed_input[1..])
-                .stdin(Stdio::inherit())
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .spawn() // returns handler
-            {
-                Ok(child_proc) => child_proc,
-                Err(e) => {
-                    print_and_flush(("Failed to execute command", e.to_string().as_str())).unwrap();
-                    return ShellState::Running;
-                }
-            };
-
-            {
-                // Update active_child_process with current process handle
-                let mut handle_child_proc = active_child_process.lock().unwrap();
-                *handle_child_proc = Some(child_proc);
-            }
-
-            {
-                // Wait for child and reset
-                let mut handle_child_proc = active_child_process.lock().unwrap();
-                if let Some(ref mut child_proc) = *handle_child_proc {
-                    child_proc.wait().unwrap();
-                }
-                *handle_child_proc = None;
-            }
-
-            ShellState::Running
-        }
-    }
+struct Shell {
+    active_child_process: Arc<Mutex<Option<std::process::Child>>>,
 }
 
-fn setup_signal_handler(active_child_process: Arc<Mutex<Option<std::process::Child>>>) {
+impl Shell {
     /*
-     * Setup a signal handler for SIGINT (CTRL-C).
-     * Spawn a new thread to listen for SIGINT signals.
-     * Upon detection, safely kill the child process.
+     * Manage the execution of commands and handle signals for the shell.
+     * Maintain the state of any active child process and provide utility methods
      */
 
-    let mut signals = Signals::new(&[SIGINT]).unwrap();
+    fn new() -> Self {
+        /*
+         * Instantiate a new Shell object with no active child process.
+         */
 
-    let child_clone = Arc::clone(&active_child_process);
+        Shell {
+            active_child_process: Arc::new(Mutex::new(None)),
+        }
+    }
 
-    thread::spawn(move || {
-        for _ in signals.forever() {
-            let mut handle_child_proc = child_clone.lock().unwrap();
-            if let Some(ref mut child) = *handle_child_proc {
-                print_and_flush("CTRL-C detected. Terminating active task.\n").unwrap();
-                child.kill().unwrap();
-            } else {
-                print_and_flush("\n-> ").unwrap();
+    fn handle_parsed_input(&self, parsed_input: Vec<&str>) -> ShellState {
+        /*
+         * Handle specific and generic implementations of commands and signals
+         * Return the ShellState for state machine
+         */
+
+        match parsed_input[0] {
+            "help" => {
+                show_help();
+                ShellState::Running
+            }
+            "exit" => ShellState::Exiting,
+            _ => {
+                let child_proc = match Command::new(parsed_input[0])
+                    .args(&parsed_input[1..])
+                    .stdin(Stdio::inherit())
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .spawn() // returns handler
+                {
+                    Ok(child_proc) => child_proc,
+                    Err(e) => {
+                        print_and_flush(("Failed to execute command", e.to_string().as_str())).unwrap();
+                        return ShellState::Running;
+                    }
+                };
+
+                {
+                    // Update active_child_process with current process handle
+                    let mut handle_child_proc = self.active_child_process.lock().unwrap();
+                    *handle_child_proc = Some(child_proc);
+                }
+
+                {
+                    // Wait for child and reset
+                    let mut handle_child_proc = self.active_child_process.lock().unwrap();
+                    if let Some(ref mut child_proc) = *handle_child_proc {
+                        child_proc.wait().unwrap();
+                    }
+                    *handle_child_proc = None;
+                }
+
+                ShellState::Running
             }
         }
-    });
+    }
+
+    fn setup_signal_handler(&self) {
+        /*
+         * Setup a signal handler for SIGINT (CTRL-C).
+         * Spawn a new thread to listen for SIGINT signals.
+         * Upon detection, safely kill the child process.
+         */
+
+        let mut signals = Signals::new(&[SIGINT]).unwrap();
+
+        let child_clone = Arc::clone(&self.active_child_process);
+
+        thread::spawn(move || {
+            for _ in signals.forever() {
+                let mut handle_child_proc = child_clone.lock().unwrap();
+                if let Some(ref mut child) = *handle_child_proc {
+                    print_and_flush("CTRL-C detected. Terminating active task.\n").unwrap();
+                    child.kill().unwrap();
+                } else {
+                    print_and_flush("\n-> ").unwrap();
+                }
+            }
+        });
+    }
 }
 
 fn show_help() {
@@ -192,10 +210,9 @@ fn show_help() {
 }
 
 fn main() {
-    let active_child_process = Arc::new(Mutex::new(None));
-    setup_signal_handler(Arc::clone(&active_child_process));
-
     let mut user_input = UserInput::new();
+    let shell = Shell::new();
+    shell.setup_signal_handler();
 
     loop {
         print_and_flush("-> ").unwrap();
@@ -212,7 +229,7 @@ fn main() {
         }
 
         if let Some(parsed_input) = parsed_input {
-            if handle_parsed_input(parsed_input, &active_child_process) == ShellState::Exiting {
+            if shell.handle_parsed_input(parsed_input) == ShellState::Exiting {
                 break;
             }
         }
