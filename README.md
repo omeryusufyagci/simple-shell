@@ -5,10 +5,12 @@ A simple shell implemented in Rust, capable of executing external commands and h
 ## Features
 
 - Execute external commands with inherited stdin, stdout, and stderr.
-- Built-in commands:
+- Currently available built-in commands:
   - `help`: Display help information.
   - `exit`: Exit the shell.
 - Handle `CTRL-D` to gracefully exit the shell or logout of a user.
+
+Built-in commands are easily extensible, but current focus is on code design and ensuring basic functionality.
 
 ## Usage
 
@@ -21,12 +23,15 @@ cargo build --release
 
 ## TODO
 
-* ~~(bug) CTRL-C should cancel the current operation and not terminate the shell~~
+* (bug)  Use expect instead of unwrap
+* (docs) Update docstrings with public doc '///'
 * (test) Add tests
 * (feat) Tab completion
 * (feat) History
 * (feat) PS1 configuration possibility
 * (feat) GUI
+* ~~(bug) CTRL-C should cancel the current operation and not terminate the shell~~
+
 
 ## LICENSE
 
