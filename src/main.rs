@@ -57,13 +57,18 @@ fn print_and_flush<T: PrintAndFlush>(msg: T) -> io::Result<()> {
     msg.print_and_flush()
 }
 
-fn read_and_parse_input(user_input: &mut String) -> (Option<Vec<&str>>, InputState) {
+fn read_and_parse_input() -> (Option<Vec<String>>, InputState) {
     /*
-     * Read user input and parse it into a vector of strings
+     * Read user input and parse it into a vector of Strings
      * Return an Optional parsed_input and the InputState
+     *
+     * TODO: Adapt to use slices while keeping the encapsulation
+     * need to properly manage lifetimes; stick to owned data
+     * in the meantime with Strings.
      */
 
-    let read_input = match io::stdin().read_line(user_input) {
+    let mut user_input = String::new();
+    let read_input = match io::stdin().read_line(&mut user_input) {
         Ok(n) => n,
         Err(_) => return (None, InputState::Exiting),
     };
@@ -73,7 +78,10 @@ fn read_and_parse_input(user_input: &mut String) -> (Option<Vec<&str>>, InputSta
     }
 
     let trimmed_input = user_input.trim();
-    let parsed_input: Vec<&str> = trimmed_input.split_whitespace().collect();
+    let parsed_input: Vec<String> = trimmed_input
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect();
 
     let input_state: InputState = if parsed_input.is_empty() {
         InputState::Empty
@@ -85,21 +93,21 @@ fn read_and_parse_input(user_input: &mut String) -> (Option<Vec<&str>>, InputSta
 }
 
 fn handle_parsed_input(
-    parsed_input: Vec<&str>,
+    parsed_input: Vec<String>,
     active_child_process: &Arc<Mutex<Option<std::process::Child>>>,
 ) -> ShellState {
     /* Handle specific and generic implementations of commands and signals
      * Return the ShellState for state machine
      */
 
-    match parsed_input[0] {
+    match parsed_input[0].as_str() {
         "help" => {
             show_help();
             ShellState::Running
         }
         "exit" => ShellState::Exiting,
         _ => {
-            let child_proc = match Command::new(parsed_input[0])
+            let child_proc = match Command::new(&parsed_input[0])
                 .args(&parsed_input[1..])
                 .stdin(Stdio::inherit())
                 .stdout(Stdio::inherit())
@@ -178,9 +186,7 @@ fn main() {
     loop {
         print_and_flush("-> ").unwrap();
 
-        let mut user_input = String::new();
-
-        let (parsed_input, input_state) = read_and_parse_input(&mut user_input);
+        let (parsed_input, input_state) = read_and_parse_input();
 
         match input_state {
             InputState::Empty => continue,
