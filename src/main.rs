@@ -20,7 +20,7 @@ enum InputState {
 trait PrintAndFlush {
     /*
      * Interface for immediate printing.
-     * Implementations overload the print_and_flush method
+     * Implementations define the behaviour of print_and_flush
      */
 
     fn print_and_flush(self) -> io::Result<()>;
@@ -74,8 +74,7 @@ impl UserInput {
 
     fn read_and_parse_input(&mut self) -> (Option<Vec<&str>>, InputState) {
         /*
-         * Read user input and parse it into a vector of Strings
-         * Return an Optional parsed_input and the InputState
+         * Read user input and determine its state.
          */
 
         self.buffer.clear();
@@ -125,8 +124,8 @@ impl Shell {
 
     fn handle_parsed_input(&self, parsed_input: Vec<&str>) -> ShellState {
         /*
-         * Handle specific and generic implementations of commands and signals
-         * Return the ShellState for state machine
+         * Execute commands based on parsed input.
+         * Returns ShellState for state flow.
          */
 
         match parsed_input[0] {

@@ -22,10 +22,11 @@ cargo build --release
 ## TODO
 
 * ~~(bug) CTRL-C should cancel the current operation and not terminate the shell~~
-* (ft.) Tab completion
-* (ft.) History
-* (ft.) PS1 configuration possibility
-* (ft.) GUI
+* (test) Add tests
+* (feat) Tab completion
+* (feat) History
+* (feat) PS1 configuration possibility
+* (feat) GUI
 
 ## LICENSE
 
