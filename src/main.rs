@@ -57,57 +57,69 @@ fn print_and_flush<T: PrintAndFlush>(msg: T) -> io::Result<()> {
     msg.print_and_flush()
 }
 
-fn read_and_parse_input() -> (Option<Vec<String>>, InputState) {
+struct UserInput {
+    buffer: String,
+}
+
+impl UserInput {
     /*
-     * Read user input and parse it into a vector of Strings
-     * Return an Optional parsed_input and the InputState
-     *
-     * TODO: Adapt to use slices while keeping the encapsulation
-     * need to properly manage lifetimes; stick to owned data
-     * in the meantime with Strings.
+     * Instantiate a new UserInput object with a heap allocated buffer
      */
 
-    let mut user_input = String::new();
-    let read_input = match io::stdin().read_line(&mut user_input) {
-        Ok(n) => n,
-        Err(_) => return (None, InputState::Exiting),
-    };
-    // Read input is 0 when CTRL-D is pressed
-    if read_input == 0 {
-        return (None, InputState::Exiting);
+    fn new() -> Self {
+        UserInput {
+            buffer: String::new(),
+        }
     }
 
-    let trimmed_input = user_input.trim();
-    let parsed_input: Vec<String> = trimmed_input
-        .split_whitespace()
-        .map(|s| s.to_string())
-        .collect();
+    fn read_and_parse_input(&mut self) -> (Option<Vec<&str>>, InputState) {
+        /*
+         * Read user input and parse it into a vector of Strings
+         * Return an Optional parsed_input and the InputState
+         */
 
-    let input_state: InputState = if parsed_input.is_empty() {
-        InputState::Empty
-    } else {
-        InputState::Valid
-    };
+        self.buffer.clear();
 
-    (Some(parsed_input), input_state)
+        let read_input = match io::stdin().read_line(&mut self.buffer) {
+            Ok(n) => n,
+            Err(_) => return (None, InputState::Exiting),
+        };
+
+        // Read input is 0 when CTRL-D is pressed
+        if read_input == 0 {
+            return (None, InputState::Exiting);
+        }
+
+        let trimmed_input = self.buffer.trim();
+        let parsed_input: Vec<&str> = trimmed_input.split_whitespace().collect();
+
+        let input_state = if parsed_input.is_empty() {
+            InputState::Empty
+        } else {
+            InputState::Valid
+        };
+
+        (Some(parsed_input), input_state)
+    }
 }
 
 fn handle_parsed_input(
-    parsed_input: Vec<String>,
+    parsed_input: Vec<&str>,
     active_child_process: &Arc<Mutex<Option<std::process::Child>>>,
 ) -> ShellState {
-    /* Handle specific and generic implementations of commands and signals
+    /*
+     * Handle specific and generic implementations of commands and signals
      * Return the ShellState for state machine
      */
 
-    match parsed_input[0].as_str() {
+    match parsed_input[0] {
         "help" => {
             show_help();
             ShellState::Running
         }
         "exit" => ShellState::Exiting,
         _ => {
-            let child_proc = match Command::new(&parsed_input[0])
+            let child_proc = match Command::new(parsed_input[0])
                 .args(&parsed_input[1..])
                 .stdin(Stdio::inherit())
                 .stdout(Stdio::inherit())
@@ -183,10 +195,12 @@ fn main() {
     let active_child_process = Arc::new(Mutex::new(None));
     setup_signal_handler(Arc::clone(&active_child_process));
 
+    let mut user_input = UserInput::new();
+
     loop {
         print_and_flush("-> ").unwrap();
 
-        let (parsed_input, input_state) = read_and_parse_input();
+        let (parsed_input, input_state) = user_input.read_and_parse_input();
 
         match input_state {
             InputState::Empty => continue,
