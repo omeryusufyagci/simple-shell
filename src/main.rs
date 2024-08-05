@@ -193,6 +193,33 @@ impl Shell {
             }
         });
     }
+
+    fn run_shell(&self, user_input: &mut UserInput) {
+        /*
+         * Run the shell application
+         */
+
+        loop {
+            print_and_flush("-> ").unwrap();
+
+            let (parsed_input, input_state) = user_input.read_and_parse_input();
+
+            match input_state {
+                InputState::Empty => continue,
+                InputState::Exiting => {
+                    print_and_flush("CTRL-D detected. Logging you out...\n").unwrap();
+                    break;
+                }
+                InputState::Valid => {}
+            }
+
+            if let Some(parsed_input) = parsed_input {
+                if self.handle_parsed_input(parsed_input) == ShellState::Exiting {
+                    break;
+                }
+            }
+        }
+    }
 }
 
 fn show_help() {
@@ -208,30 +235,10 @@ fn show_help() {
                         "#;
     print_and_flush(help_msg).unwrap();
 }
-
 fn main() {
     let mut user_input = UserInput::new();
+
     let shell = Shell::new();
     shell.setup_signal_handler();
-
-    loop {
-        print_and_flush("-> ").unwrap();
-
-        let (parsed_input, input_state) = user_input.read_and_parse_input();
-
-        match input_state {
-            InputState::Empty => continue,
-            InputState::Exiting => {
-                print_and_flush("CTRL-D detected. Logging you out...\n").unwrap();
-                break;
-            }
-            InputState::Valid => {}
-        }
-
-        if let Some(parsed_input) = parsed_input {
-            if shell.handle_parsed_input(parsed_input) == ShellState::Exiting {
-                break;
-            }
-        }
-    }
+    shell.run_shell(&mut user_input);
 }
