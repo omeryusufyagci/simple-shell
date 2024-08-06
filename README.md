@@ -8,28 +8,36 @@ A simple shell implemented in Rust, capable of executing external commands and h
 - Currently available built-in commands:
   - `help`: Display help information.
   - `exit`: Exit the shell.
+- Handle `CTRL-C` to cancel the current operation without terminating the shell.
 - Handle `CTRL-D` to gracefully exit the shell or logout of a user.
 
 Built-in commands are easily extensible, but current focus is on code design and ensuring basic functionality.
 
-## Usage
+## Installation
 
-To run the shell, compile and execute the program:
+To clone and build the project, run the following commands:
 
 ```sh
+git clone https://github.com/omeryusufyagci/simple-shell.git
+cd simple-shell
 cargo build --release
+```
+
+## Usage
+```sh
 ./target/release/simple_shell
 ```
 
 ## TODO
 
 * (bug)  Use expect instead of unwrap
-* (docs) Update docstrings with public doc '///'
 * (test) Add tests
 * (feat) Tab completion
 * (feat) History
 * (feat) PS1 configuration possibility
 * (feat) GUI
+* ~~(refactor) Modularize the code~~
+* ~~(docs) Update docstrings with public doc '///'~~
 * ~~(bug) CTRL-C should cancel the current operation and not terminate the shell~~
 
 
