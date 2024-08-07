@@ -51,7 +51,7 @@ impl ShellCore {
                 {
                     Ok(child_proc) => child_proc,
                     Err(e) => {
-                        write_output(("Failed to execute command", e.to_string().as_str())).unwrap();
+                        write_output(("Failed to execute command", e.to_string().as_str()));
                         return ShellState::Running;
                     }
                 };
@@ -89,10 +89,10 @@ impl ShellCore {
             for _ in signals.forever() {
                 let mut handle_child_proc = child_clone.lock().unwrap();
                 if let Some(ref mut child) = *handle_child_proc {
-                    write_output("CTRL-C detected. Terminating active task.\n").unwrap();
+                    write_output("CTRL-C detected. Terminating active task.\n");
                     child.kill().unwrap();
                 } else {
-                    write_output("\n-> ").unwrap();
+                    write_output("\n-> ");
                 }
             }
         });
@@ -101,14 +101,14 @@ impl ShellCore {
     /// Run the shell application
     pub fn run_shell(&self, user_input: &mut crate::input_handler::UserInput) {
         loop {
-            write_output("-> ").unwrap();
+            write_output("-> ");
 
             let (parsed_input, input_state) = user_input.process_input();
 
             match input_state {
                 crate::input_handler::InputState::Empty => continue,
                 crate::input_handler::InputState::Exiting => {
-                    write_output("CTRL-D detected. Logging you out...\n").unwrap();
+                    write_output("CTRL-D detected. Logging you out...\n");
                     break;
                 }
                 crate::input_handler::InputState::Valid => {}
@@ -132,5 +132,5 @@ fn show_help() {
                             exit - Exit the shell
                         "#;
 
-    write_output(help_msg).unwrap();
+    write_output(help_msg);
 }
