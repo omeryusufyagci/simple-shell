@@ -30,12 +30,12 @@ cargo build --release
 
 ## TODO
 
-* (bug)  Use expect instead of unwrap
 * (test) Add tests
 * (feat) Tab completion
 * (feat) History
 * (feat) PS1 configuration possibility
 * (feat) GUI
+* ~~(bug)  Improve error handling; eliminate unwrap usage~~
 * ~~(refactor) Modularize the code~~
 * ~~(docs) Update docstrings with public doc '///'~~
 * ~~(bug) CTRL-C should cancel the current operation and not terminate the shell~~

@@ -2,16 +2,34 @@
 //!
 //! The `ShellCore` struct manages command execution and maintains the state of any child processes.
 
-use crate::utils::write_output;
+use crate::utils::{write_output, IoState, WriteOutputError};
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+/* TODO:
+*  Implement helpers for acquire_lock and kill_child_process
+*  Fix error messages without codes, details
+*/
+
 #[derive(PartialEq)]
 pub enum ShellState {
     Running,
     Exiting,
+}
+
+#[derive(Debug)]
+pub enum ShellError {
+    WriteError(WriteOutputError),
+    LockError(String),
+    SignalError(String),
+}
+
+impl From<WriteOutputError> for ShellError {
+    fn from(error: WriteOutputError) -> Self {
+        ShellError::WriteError(error)
+    }
 }
 
 pub struct ShellCore {
@@ -27,8 +45,9 @@ impl ShellCore {
             active_child_process: Arc::new(Mutex::new(None)),
         };
 
-        shell_core.setup_signal_handler();
-
+        if let Err(_) = shell_core.setup_signal_handler() {
+            let _ = write_output("Failed to setup signal handler");
+        }
         shell_core
     }
 
@@ -58,15 +77,33 @@ impl ShellCore {
 
                 {
                     // Update active_child_process with current process handle
-                    let mut handle_child_proc = self.active_child_process.lock().unwrap();
+                    let mut handle_child_proc = match self.active_child_process.lock() {
+                        Ok(handle) => handle,
+                        Err(_) => {
+                            let _ = write_output("Failed to acquire lock for child process.");
+                            return ShellState::Running;
+                        }
+                    };
                     *handle_child_proc = Some(child_proc);
                 }
 
                 {
                     // Wait for child and reset
-                    let mut handle_child_proc = self.active_child_process.lock().unwrap();
+                    let mut handle_child_proc = match self.active_child_process.lock() {
+                        Ok(handle) => handle,
+                        Err(_) => {
+                            let _ = write_output("Failed to acquire lock for child process.");
+                            return ShellState::Running;
+                        }
+                    };
+
                     if let Some(ref mut child_proc) = *handle_child_proc {
-                        child_proc.wait().unwrap();
+                        if let Err(e) = child_proc.wait() {
+                            let _ = write_output((
+                                "Timeout in waiting for child process.",
+                                e.to_string().as_str(),
+                            ));
+                        }
                     }
                     *handle_child_proc = None;
                 }
@@ -80,22 +117,33 @@ impl ShellCore {
     ///
     /// Spawns a new thread to listen for `SIGINT` signals. Upon detection,
     /// it safely terminates any active child process.
-    pub fn setup_signal_handler(&self) {
-        let mut signals = Signals::new(&[SIGINT]).unwrap();
+    pub fn setup_signal_handler(&self) -> Result<(), ShellError> {
+        let mut signals =
+            Signals::new(&[SIGINT]).map_err(|e| ShellError::SignalError(e.to_string()))?;
 
         let child_clone = Arc::clone(&self.active_child_process);
 
         thread::spawn(move || {
             for _ in signals.forever() {
-                let mut handle_child_proc = child_clone.lock().unwrap();
+                let mut handle_child_proc = match child_clone.lock() {
+                    Ok(handle) => handle,
+                    Err(_) => {
+                        let _ = write_output("Failed to acquire lock for signal handler.");
+                        continue;
+                    }
+                };
                 if let Some(ref mut child) = *handle_child_proc {
-                    write_output("CTRL-C detected. Terminating active task.\n");
-                    child.kill().unwrap();
+                    let _ = write_output("CTRL-C detected. Terminating active task.\n");
+                    if let Err(e) = child.kill() {
+                        let _ =
+                            write_output(("Failed to kill child process", e.to_string().as_str()));
+                    }
                 } else {
                     write_output("\n-> ");
                 }
             }
         });
+        Ok(())
     }
 
     /// Run the shell application
