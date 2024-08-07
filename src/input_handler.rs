@@ -24,7 +24,7 @@ impl UserInput {
     }
 
     /// Read user input and determine its state.
-    pub fn read_and_parse_input(&mut self) -> (Option<Vec<&str>>, InputState) {
+    pub fn process_input(&mut self) -> (Option<Vec<&str>>, InputState) {
         self.buffer.clear();
 
         let read_input = match io::stdin().read_line(&mut self.buffer) {

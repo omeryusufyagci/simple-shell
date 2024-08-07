@@ -103,7 +103,7 @@ impl ShellCore {
         loop {
             print_and_flush("-> ").unwrap();
 
-            let (parsed_input, input_state) = user_input.read_and_parse_input();
+            let (parsed_input, input_state) = user_input.process_input();
 
             match input_state {
                 crate::input_handler::InputState::Empty => continue,
