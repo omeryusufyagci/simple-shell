@@ -2,7 +2,7 @@
 //!
 //! The `ShellCore` struct manages command execution and maintains the state of any child processes.
 
-use crate::utils::print_and_flush;
+use crate::utils::write_output;
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -51,7 +51,7 @@ impl ShellCore {
                 {
                     Ok(child_proc) => child_proc,
                     Err(e) => {
-                        print_and_flush(("Failed to execute command", e.to_string().as_str())).unwrap();
+                        write_output(("Failed to execute command", e.to_string().as_str())).unwrap();
                         return ShellState::Running;
                     }
                 };
@@ -89,10 +89,10 @@ impl ShellCore {
             for _ in signals.forever() {
                 let mut handle_child_proc = child_clone.lock().unwrap();
                 if let Some(ref mut child) = *handle_child_proc {
-                    print_and_flush("CTRL-C detected. Terminating active task.\n").unwrap();
+                    write_output("CTRL-C detected. Terminating active task.\n").unwrap();
                     child.kill().unwrap();
                 } else {
-                    print_and_flush("\n-> ").unwrap();
+                    write_output("\n-> ").unwrap();
                 }
             }
         });
@@ -101,14 +101,14 @@ impl ShellCore {
     /// Run the shell application
     pub fn run_shell(&self, user_input: &mut crate::input_handler::UserInput) {
         loop {
-            print_and_flush("-> ").unwrap();
+            write_output("-> ").unwrap();
 
             let (parsed_input, input_state) = user_input.process_input();
 
             match input_state {
                 crate::input_handler::InputState::Empty => continue,
                 crate::input_handler::InputState::Exiting => {
-                    print_and_flush("CTRL-D detected. Logging you out...\n").unwrap();
+                    write_output("CTRL-D detected. Logging you out...\n").unwrap();
                     break;
                 }
                 crate::input_handler::InputState::Valid => {}
@@ -132,5 +132,5 @@ fn show_help() {
                             exit - Exit the shell
                         "#;
 
-    print_and_flush(help_msg).unwrap();
+    write_output(help_msg).unwrap();
 }
