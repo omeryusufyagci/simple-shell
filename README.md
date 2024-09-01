@@ -30,11 +30,11 @@ cargo build --release
 
 ## TODO
 
+* (bug) Inconsistent output display and occasional hangs
 * (test) Add tests
 * (feat) Tab completion
 * (feat) History
 * (feat) PS1 configuration possibility
-* (feat) GUI
 * ~~(bug)  Improve error handling; eliminate unwrap usage~~
 * ~~(refactor) Modularize the code~~
 * ~~(docs) Update docstrings with public doc '///'~~
