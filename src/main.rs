@@ -13,5 +13,5 @@ fn main() {
     let mut user_input = UserInput::new();
 
     let shell = ShellCore::new();
-    shell.run_shell(&mut user_input);
+    shell.start_shell(&mut user_input);
 }
