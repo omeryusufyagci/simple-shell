@@ -2,6 +2,7 @@
 //!
 //! It includes the `WriteOutput` trait and related functions for immediate printing and flushing of output.
 
+use std::fmt;
 use std::io::{self, Write};
 
 #[derive(Debug)]
@@ -13,6 +14,14 @@ pub enum IoState {
 #[derive(Debug)]
 pub enum WriteOutputError {
     WriteError,
+}
+
+impl fmt::Display for WriteOutputError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            WriteOutputError::WriteError => write!(f, "An error occurred while writing output"),
+        }
+    }
 }
 
 /// Interface for immediate printing.
