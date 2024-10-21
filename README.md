@@ -1,17 +1,12 @@
 # Simple Rust Shell
 
-A simple shell implemented in Rust, capable of executing external commands and handling basic built-in commands.
+This was a simple test to get a feel for how CLI tooling works with Rust. It's a simple shell that supports extensible arguments. 
 
 ## Features
 
 - Execute external commands with inherited stdin, stdout, and stderr.
-- Currently available built-in commands:
-  - `help`: Display help information.
-  - `exit`: Exit the shell.
-- Handle `CTRL-C` to cancel the current operation without terminating the shell.
-- Handle `CTRL-D` to gracefully exit the shell or logout of a user.
-
-Built-in commands are easily extensible, but current focus is on code design and ensuring basic functionality.
+- Support for built-in commands such as `help` or `exit`.
+- Graceful signal handling for `CTRL-C` to cancel operation and `CTRL-D` for user logout.
 
 ## Installation
 
@@ -27,19 +22,6 @@ cargo build --release
 ```sh
 ./target/release/simple_shell
 ```
-
-## TODO
-
-* (bug) Inconsistent output display and occasional hangs
-* (test) Add tests
-* (feat) Tab completion
-* (feat) History
-* (feat) PS1 configuration possibility
-* ~~(bug)  Improve error handling; eliminate unwrap usage~~
-* ~~(refactor) Modularize the code~~
-* ~~(docs) Update docstrings with public doc '///'~~
-* ~~(bug) CTRL-C should cancel the current operation and not terminate the shell~~
-
 
 ## LICENSE
 
